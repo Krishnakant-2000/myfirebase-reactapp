@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: Basic body styling for Inter font */
+body {
+  font-family: 'Inter', sans-serif;
+}
