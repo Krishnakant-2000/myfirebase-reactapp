@@ -1,5 +1,4 @@
 // src/App.jsx
-// This is your main App component, now containing all authentication logic.
 import React, { useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
@@ -8,133 +7,91 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup
-} from 'firebase/auth'; // All Auth functions are imported here
-import { auth, db } from './firebase.js'; // This import needs firebase.js to exist
-import DataDisplay from './DataDisplay.jsx'; // Updated import to .jsx extension
+} from 'firebase/auth';
+import { auth, db } from './firebase.js'; // Ensure .js extension
+import DataDisplay from './DataDisplay.jsx'; // Ensure .jsx extension
 
 function App() {
-  const [user, setUser] = useState(null); // Stores the current authenticated user
-  const [loading, setLoading] = useState(true); // Manages loading state for initial auth check
-  const [firebaseInitialized, setFirebaseInitialized] = useState(false); // Tracks if Firebase is successfully initialized
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [firebaseInitialized, setFirebaseInitialized] = useState(false);
 
-  // States for the authentication form (email/password, Google)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true); // Toggles between Login and Sign Up views
-  const [formError, setFormError] = useState(''); // Displays authentication-related errors to the user
+  const [isLogin, setIsLogin] = useState(true);
+  const [formError, setFormError] = useState('');
 
-  // Effect hook to initialize Firebase services and set up the authentication state listener.
-  // This runs once when the component mounts.
   useEffect(() => {
-    // Check if Firebase auth and db instances are available from firebase.js
     if (auth && db) {
-      setFirebaseInitialized(true); // Mark Firebase as initialized
+      setFirebaseInitialized(true);
       console.log("Firebase services (auth, db) are initialized.");
-
-      // Set up a listener for changes in the user's authentication state.
-      // This is crucial for keeping your UI in sync with Firebase Auth.
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        setUser(currentUser); // Update the user state
-        setLoading(false); // Authentication check is complete, stop loading
+        setUser(currentUser);
+        setLoading(false);
         if (currentUser) {
-          setFormError(''); // Clear any previous authentication errors if a user logs in
+          setFormError('');
         }
       });
-
-      // Cleanup function: This is called when the component unmounts
-      // to detach the authentication state listener and prevent memory leaks.
       return () => unsubscribe();
     } else {
-      // If Firebase instances are not available (e.g., due to config error in firebase.js)
       console.error("Firebase services (auth, db) not available. Check src/firebase.js initialization.");
-      setLoading(false); // Stop loading to allow other UI to render (e.g., error message)
+      setLoading(false);
       setFormError("Firebase initialization failed. Please ensure your Firebase config is correctly added in src/firebase.js.");
     }
-  }, []); // Empty dependency array ensures this effect runs only once on mount
+  }, []);
 
-  // Handles email/password login and signup form submission.
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form submission behavior (page reload)
-    setFormError(''); // Clear any previous errors
-    setLoading(true); // Set loading state
-
-    // Basic validation
+    e.preventDefault();
+    setFormError('');
+    setLoading(true);
     if (!email || !password) {
       setFormError('Email and password cannot be empty.');
       setLoading(false);
       return;
     }
-
-    // Ensure Firebase Auth is initialized before attempting operations
     if (!auth) {
       setFormError('Firebase Auth not initialized. Please check Firebase configuration.');
       setLoading(false);
       return;
     }
-
     try {
       if (isLogin) {
-        // Attempt to sign in with email and password
         await signInWithEmailAndPassword(auth, email, password);
-        console.log('User signed in successfully with email/password!');
+        console.log('User signed in successfully!');
       } else {
-        // Attempt to create a new user with email and password
         await createUserWithEmailAndPassword(auth, email, password);
-        console.log('User signed up successfully with email/password!');
+        console.log('User signed up successfully!');
       }
-      // Clear form fields on successful operation
       setEmail('');
       setPassword('');
     } catch (error) {
-      // Handle Firebase authentication errors and provide user-friendly messages
       console.error("Authentication error:", error.message);
       let errorMessage = "An unknown authentication error occurred.";
       switch (error.code) {
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address. Please check format.';
-          break;
-        case 'auth/user-disabled':
-          errorMessage = 'This user account has been disabled.';
-          break;
-        case 'auth/user-not-found':
-          errorMessage = 'No user found with this email.';
-          break;
-        case 'auth/wrong-password':
-          errorMessage = 'Incorrect password. Please try again.';
-          break;
-        case 'auth/email-already-in-use':
-          errorMessage = 'This email is already in use. Try signing in or using a different email.';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'Password should be at least 6 characters.';
-          break;
-        case 'auth/network-request-failed':
-          errorMessage = 'Network error. Please check your internet connection.';
-          break;
-        default:
-          errorMessage = `Authentication failed: ${error.message}`;
-          break;
+        case 'auth/invalid-email': errorMessage = 'Invalid email address. Please check format.'; break;
+        case 'auth/user-disabled': errorMessage = 'This user account has been disabled.'; break;
+        case 'auth/user-not-found': errorMessage = 'No user found with this email.'; break;
+        case 'auth/wrong-password': errorMessage = 'Incorrect password. Please try again.'; break;
+        case 'auth/email-already-in-use': errorMessage = 'This email is already in use. Try signing in or using a different email.'; break;
+        case 'auth/weak-password': errorMessage = 'Password should be at least 6 characters.'; break;
+        case 'auth/network-request-failed': errorMessage = 'Network error. Please check your internet connection.'; break;
+        default: errorMessage = `Authentication failed: ${error.message}`; break;
       }
-      setFormError(errorMessage); // Display error message to the user
+      setFormError(errorMessage);
     } finally {
-      setLoading(false); // End loading state
+      setLoading(false);
     }
   };
 
-  // Handles Google Sign-in using a popup window.
   const handleGoogleSignIn = async () => {
-    setFormError(''); // Clear any previous errors
-    setLoading(true); // Set loading state for Google sign-in
-    const provider = new GoogleAuthProvider(); // Create an instance of the Google Auth Provider
-
+    setFormError('');
+    setLoading(true);
+    const provider = new GoogleAuthProvider();
     try {
-      // Initiate the Google sign-in flow via a popup window
       await signInWithPopup(auth, provider);
       console.log('User signed in successfully with Google!');
-      // The onAuthStateChanged listener will automatically update the `user` state.
     } catch (error) {
       console.error('Google Sign-in error:', error.message);
-      // Handle specific Google sign-in errors
       let errorMessage = "Google Sign-in failed.";
       if (error.code === 'auth/popup-closed-by-user') {
         errorMessage = 'Google sign-in popup was closed.';
@@ -145,44 +102,39 @@ function App() {
       } else {
         errorMessage = `Google Sign-in failed: ${error.message}`;
       }
-      setFormError(errorMessage); // Display error message to the user
+      setFormError(errorMessage);
     } finally {
-      setLoading(false); // End loading state
+      setLoading(false);
     }
   };
 
-  // Handles user sign out.
   const handleSignOut = async () => {
-    setLoading(true); // Indicate signing out in progress
+    setLoading(true);
     try {
       if (auth) {
-        await signOut(auth); // Sign the current user out of Firebase
+        await signOut(auth);
         console.log('User signed out successfully!');
       } else {
         console.error('Firebase Auth not initialized. Cannot sign out.');
       }
     } catch (error) {
       console.error("Sign out error:", error.message);
-      // You might want to display this error to the user in the UI
     } finally {
-      setLoading(false); // Sign out process complete
+      setLoading(false);
     }
   };
 
-  // Display a loading screen while Firebase is initializing or authenticating.
   if (!firebaseInitialized || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4 font-inter">
         <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
           <p className="text-gray-700 text-lg">Initializing Firebase and checking authentication status...</p>
-          {/* Display initialization errors if any */}
           {formError && <p className="text-red-500 text-sm mt-2">{formError}</p>}
         </div>
       </div>
     );
   }
 
-  // Determine userId for display, providing a fallback if no user is authenticated.
   const userId = user?.uid || 'Not Authenticated';
 
   return (
@@ -193,10 +145,8 @@ function App() {
       <p className="text-center text-gray-600 mb-6">
         Current User ID: <span className="font-mono bg-gray-200 rounded-md px-2 py-1 text-xs">{userId}</span>
       </p>
-
       <div className="flex flex-col items-center justify-center space-y-8">
         {user ? (
-          // Content for authenticated users: Welcome message, Sign Out button, and DataDisplay
           <div className="text-center">
             <p className="text-xl text-gray-800 mb-4">Welcome, {user.email || 'Guest User'}!</p>
             <button
@@ -206,14 +156,12 @@ function App() {
             >
               {loading ? 'Signing Out...' : 'Sign Out'}
             </button>
-            {/* Render DataDisplay component after successful authentication */}
             <DataDisplay />
           </div>
         ) : (
-          // Content for unauthenticated users: Email/Password and Google Sign-in form
           <div className="p-4 bg-white rounded-lg shadow-lg w-full max-w-sm mx-auto">
             <h2 className="text-2xl font-bold mb-4 text-center">Authentication</h2>
-            {formError && <p className="text-red-500 mb-4">{formError}</p>} {/* Display form-specific errors */}
+            {formError && <p className="text-red-500 mb-4">{formError}</p>}
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
                 Email:
@@ -243,17 +191,17 @@ function App() {
             <div className="flex items-center justify-between mb-4">
               <button
                 type="submit"
-                onClick={handleSubmit} // Triggers email/password login or signup
+                onClick={handleSubmit}
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                disabled={loading} // Disable button while loading
+                disabled={loading}
               >
                 {isLogin ? 'Sign In' : 'Sign Up'}
               </button>
               <button
-                type="button" // Important: type="button" to prevent form submission
-                onClick={() => setIsLogin(!isLogin)} // Toggles between login and signup view
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
                 className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                disabled={loading} // Disable button while loading
+                disabled={loading}
               >
                 Switch to {isLogin ? 'Sign Up' : 'Sign In'}
               </button>
@@ -261,14 +209,11 @@ function App() {
             <div className="text-center">
               <p className="text-gray-600 mb-3">OR</p>
               <button
-                type="button" // Important: type="button" to prevent form submission
-                onClick={handleGoogleSignIn} // Triggers Google sign-in
-                // Removed w-full. Set a fixed width and ensured centering.
-                // Added transform for a subtle hover effect that doesn't "zoom" too much.
+                type="button"
+                onClick={handleGoogleSignIn}
                 className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center justify-center w-64 mx-auto transition-all duration-300 ease-in-out hover:scale-105"
-                disabled={loading} // Disable button while loading
+                disabled={loading}
               >
-                {/* Google Icon SVG */}
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path d="M22.56 12.27c0-.78-.07-1.5-.2-2.2H12v4.26h6.15c-.25 1.25-.97 2.3-2.1 3.03v2.79h3.6c2.1-1.95 3.33-4.8 3.33-8.08zm-1.88-1.74h-6.19V6.22h3.94c.14.7.21 1.44.21 2.2V10.53z" fill="#4285F4"/>
                   <path d="M12 23.99c2.72 0 5.2-1 6.93-2.69L15.34 18.5c-1.07.72-2.45 1.14-3.34 1.14-3.55 0-6.57-2.38-7.65-5.6H.75v2.79c1.55 3.03 4.8 5.11 8.87 5.11h2.38z" fill="#34A853"/>

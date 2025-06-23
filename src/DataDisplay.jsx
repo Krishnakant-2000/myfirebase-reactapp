@@ -1,38 +1,32 @@
-// src/DataDisplay.js
+// src/DataDisplay.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, onSnapshot } from 'firebase/firestore';
-import { db } from './firebase'; // Import the db instance
+import { db } from './firebase.js'; // Ensure correct import path
 
 function DataDisplay() {
   const [items, setItems] = useState([]);
   const [newItemName, setNewItemName] = useState('');
-  const [error, setError] = useState(''); // Added local error state for DataDisplay
+  const [error, setError] = useState('');
 
-  // Fetch data initially and listen for real-time updates
   useEffect(() => {
     if (!db) {
       console.warn("Firestore (db) is not initialized yet in DataDisplay. Cannot fetch data.");
       return;
     }
-
     const itemsCollectionRef = collection(db, 'items');
-
-    // Real-time listener using onSnapshot
     const unsubscribe = onSnapshot(itemsCollectionRef, (snapshot) => {
       const fetchedItems = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       setItems(fetchedItems);
-      setError(''); // Clear error on successful fetch
+      setError('');
     }, (err) => {
       console.error("Error fetching real-time data:", err);
       setError(`Error loading data: ${err.message}`);
     });
-
-    // Cleanup the listener when the component unmounts
     return () => unsubscribe();
-  }, [db]); // Add db to dependency array to re-run if db becomes available later
+  }, [db]);
 
   const handleAddItem = async (e) => {
     e.preventDefault();
@@ -45,14 +39,13 @@ function DataDisplay() {
       console.error("Firestore (db) is not initialized. Cannot add item.");
       return;
     }
-
     try {
       await addDoc(collection(db, 'items'), {
         name: newItemName,
-        createdAt: new Date() // Firestore automatically converts Date objects to Timestamps
+        createdAt: new Date()
       });
       setNewItemName('');
-      setError(''); // Clear error on successful add
+      setError('');
       console.log('Item added successfully!');
     } catch (err) {
       console.error('Error adding item:', err);
@@ -64,7 +57,6 @@ function DataDisplay() {
     <div className="p-4 bg-white rounded-lg shadow-md max-w-lg mx-auto mt-8">
       <h2 className="text-2xl font-bold mb-4 text-center">Firestore Data</h2>
       {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
-
       <form onSubmit={handleAddItem} className="mb-4 flex gap-2">
         <input
           type="text"
@@ -80,7 +72,6 @@ function DataDisplay() {
           Add Item
         </button>
       </form>
-
       {items.length === 0 ? (
         <p className="text-gray-600 text-center">No items yet. Add one!</p>
       ) : (
